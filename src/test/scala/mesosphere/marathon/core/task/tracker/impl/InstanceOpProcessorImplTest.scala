@@ -420,19 +420,19 @@ class InstanceOpProcessorImplTest
 //    f.verifyNoMoreInteractions()
   }
 
-  test("process TASK_GONE update for running task") {}
+  test("process TASK_GONE update for a running task") {}
 
-  test("process TASK_DROPPED update for staging task") {}
+  test("process TASK_DROPPED update for a staging task") {}
 
-  test("process TASK_DROPPED update for starting task") {}
+  test("process TASK_DROPPED update for a starting task") {}
 
-  test("process TASK_UNREACHABLE update for starting task") {}
+  test("process TASK_UNREACHABLE update for a staging task") {}
 
-  test("process TASK_UNREACHABLE update for staging task") {}
+  test("process TASK_UNREACHABLE update for a starting task") {}
 
-  test("process TASK_UNREACHABLE update for running task") {}
+  test("process TASK_UNREACHABLE update for a running task") {}
 
-  test("process TASK_UNKNOWN update for unreachable task") {}
+  test("process TASK_UNKNOWN update for an unreachable task") {}
 
   class Fixture {
     lazy val config = MarathonTestHelper.defaultConfig()
