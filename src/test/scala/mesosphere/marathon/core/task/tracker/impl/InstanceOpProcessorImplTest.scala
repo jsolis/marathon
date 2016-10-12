@@ -1,7 +1,7 @@
 package mesosphere.marathon.core.task.tracker.impl
 
 import akka.Done
-import akka.actor.{ActorRef, Status}
+import akka.actor.{ ActorRef, Status }
 import akka.event.EventStream
 import akka.testkit.TestProbe
 import ch.qos.logback.classic.Level
@@ -12,22 +12,22 @@ import mesosphere.marathon.core.CoreGuiceModule
 import mesosphere.marathon.core.base.ConstantClock
 import mesosphere.marathon.core.health.HealthCheckManager
 import mesosphere.marathon.core.instance.Instance
-import mesosphere.marathon.core.instance.update.{InstanceUpdateEffect, InstanceUpdateOperation}
+import mesosphere.marathon.core.instance.update.{ InstanceUpdateEffect, InstanceUpdateOperation }
 import mesosphere.marathon.core.launchqueue.LaunchQueue
-import mesosphere.marathon.core.task.bus.{MesosTaskStatusTestHelper, TaskStatusEmitter}
+import mesosphere.marathon.core.task.bus.{ MesosTaskStatusTestHelper, TaskStatusEmitter }
 import mesosphere.marathon.core.task.tracker.TaskUpdater
-import mesosphere.marathon.core.task.update.impl.steps.{NotifyHealthCheckManagerStepImpl, NotifyLaunchQueueStepImpl, NotifyRateLimiterStepImpl, PostToEventStreamStepImpl, ScaleAppUpdateStepImpl, TaskStatusEmitterPublishStepImpl}
+import mesosphere.marathon.core.task.update.impl.steps.{ NotifyHealthCheckManagerStepImpl, NotifyLaunchQueueStepImpl, NotifyRateLimiterStepImpl, PostToEventStreamStepImpl, ScaleAppUpdateStepImpl, TaskStatusEmitterPublishStepImpl }
 import mesosphere.marathon.metrics.Metrics
-import mesosphere.marathon.state.{PathId, Timestamp}
-import mesosphere.marathon.storage.repository.{AppRepository, InstanceRepository, ReadOnlyAppRepository}
-import mesosphere.marathon.test.{CaptureLogEvents, MarathonActorSupport, Mockito, _}
+import mesosphere.marathon.state.{ PathId, Timestamp }
+import mesosphere.marathon.storage.repository.{ AppRepository, InstanceRepository, ReadOnlyAppRepository }
+import mesosphere.marathon.test.{ CaptureLogEvents, MarathonActorSupport, Mockito, _ }
 import org.apache.mesos.SchedulerDriver
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{GivenWhenThen, Matchers}
+import org.scalatest.{ GivenWhenThen, Matchers }
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 class InstanceOpProcessorImplTest
     extends MarathonActorSupport with MarathonSpec with Mockito with GivenWhenThen with ScalaFutures with Matchers {
