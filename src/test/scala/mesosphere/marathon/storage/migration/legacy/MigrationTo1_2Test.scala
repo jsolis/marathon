@@ -1,20 +1,21 @@
-package mesosphere.marathon.storage.migration.legacy.legacy
+package mesosphere.marathon
+package storage.migration.legacy
 
 import akka.stream.scaladsl.Sink
 import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.Protos.MarathonTask
 import mesosphere.marathon.core.instance.InstanceStatus
 import mesosphere.marathon.core.task.bus.MesosTaskStatusTestHelper
-import mesosphere.marathon.core.task.tracker.impl.{MarathonTaskStatusSerializer, TaskSerializer}
-import mesosphere.marathon.core.task.{MarathonTaskStatus, Task}
+import mesosphere.marathon.core.task.tracker.impl.{ MarathonTaskStatusSerializer, TaskSerializer }
+import mesosphere.marathon.core.task.{ MarathonTaskStatus, Task }
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.MarathonTaskState
 import mesosphere.marathon.storage.LegacyInMemConfig
 import mesosphere.marathon.storage.repository.TaskRepository
-import mesosphere.marathon.test.{MarathonActorSupport, MarathonSpec}
+import mesosphere.marathon.test.{ MarathonActorSupport, MarathonSpec }
 import org.apache.mesos
 import org.apache.mesos.Protos.TaskStatus
-import org.scalatest.{GivenWhenThen, Matchers}
+import org.scalatest.{ GivenWhenThen, Matchers }
 
 import scala.concurrent.ExecutionContext
 

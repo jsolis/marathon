@@ -1,19 +1,19 @@
-package mesosphere.marathon.state
+package mesosphere.marathon
+package state
 
 import com.wix.accord._
 import com.wix.accord.dsl._
 import mesosphere.marathon.Protos.GroupDefinition
 import mesosphere.marathon.api.v2.Validation._
+import mesosphere.marathon.core.externalvolume.ExternalVolumes
+import mesosphere.marathon.core.pod.PodDefinition
 import mesosphere.marathon.plugin.{ Group => IGroup }
 import mesosphere.marathon.state.Group._
 import mesosphere.marathon.state.PathId._
-import mesosphere.marathon.core.externalvolume.ExternalVolumes
-import mesosphere.marathon.core.pod.PodDefinition
+import mesosphere.marathon.stream._
 import org.jgrapht.DirectedGraph
 import org.jgrapht.alg.CycleDetector
 import org.jgrapht.graph._
-
-import scala.collection.JavaConverters._
 
 case class Group(
     id: PathId,
@@ -27,13 +27,12 @@ case class Group(
   override def mergeFromProto(bytes: Array[Byte]): Group = Group.fromProto(GroupDefinition.parseFrom(bytes))
 
   override def toProto: GroupDefinition = {
-    import collection.JavaConverters._
     GroupDefinition.newBuilder
       .setId(id.toString)
       .setVersion(version.toString)
-      .addAllDeprecatedApps(apps.values.map(_.toProto).asJava)
-      .addAllGroups(groups.map(_.toProto).asJava)
-      .addAllDependencies(dependencies.map(_.toString).asJava)
+      .addAllDeprecatedApps(apps.values.map(_.toProto))
+      .addAllGroups(groups.map(_.toProto))
+      .addAllDependencies(dependencies.map(_.toString))
       .build()
   }
 
@@ -100,24 +99,36 @@ case class Group(
 
   /**
     * Add the given app definition to this group replacing any previously existing app definition with the same ID.
-    *
-    * If a group exists with a conflicting ID which does not contain any app definition, replace that as well.
+    * If a group exists with a conflicting ID which does not contain any app or pod definition, replace that as well.
+    * See **very** similar logic in [[putPod]].
     */
   private def putApplication(appDef: AppDefinition): Group = {
     copy(
-      // If there is a group with a conflicting id which contains no app definitions,
-      // replace it. Otherwise do not replace it. Validation will catch conflicting app/group IDs later.
-      groupsById = groups.filter { group => group.id != appDef.id || group.containsApps }
-        .map(group => group.id -> group)(collection.breakOut),
+      // If there is a group with a conflicting id which contains no app or pod definitions,
+      // replace it. Otherwise do not replace it. Validation should catch conflicting app/pod/group IDs later.
+      groupsById = groupsById.filter {
+        case (groupKey, group) =>
+          group.id != appDef.id || group.containsApps || group.containsPods
+      },
       // replace potentially existing app definition
       apps = apps + (appDef.id -> appDef)
     )
   }
 
+  /**
+    * Add the given pod definition to this group replacing any previously existing pod definition with the same ID.
+    * If a group exists with a conflicting ID which does not contain any app or pod definition, replace that as well.
+    * See **very** similar logic in [[putApplication]].
+    */
   private def putPod(podDef: PodDefinition): Group = {
     copy(
-      groupsById = groupsById.filter { case (groupKey, group) => group.id != podDef.id || group.containsApps },
-      // replace potentially existing app definition
+      // If there is a group with a conflicting id which contains no app or pod definitions,
+      // replace it. Otherwise do not replace it. Validation should catch conflicting app/pod/group IDs later.
+      groupsById = groupsById.filter {
+        case (groupKey, group) =>
+          group.id != podDef.id || group.containsApps || group.containsPods
+      },
+      // replace potentially existing pod definition
       pods = pods + (podDef.id -> podDef)
     )
   }
@@ -192,7 +203,7 @@ case class Group(
 
   def runSpecsWithNoDependencies: Set[RunSpec] = {
     val g = dependencyGraph
-    g.vertexSet.asScala.filter { v => g.outDegreeOf(v) == 0 }.toSet
+    g.vertexSet.filter { v => g.outDegreeOf(v) == 0 }
   }
 
   def hasNonCyclicDependencies: Boolean = {
@@ -272,16 +283,16 @@ object Group {
   def fromProto(msg: GroupDefinition): Group = {
     new Group(
       id = msg.getId.toPath,
-      apps = msg.getDeprecatedAppsList.asScala.map { proto =>
+      apps = msg.getDeprecatedAppsList.map { proto =>
         val app = AppDefinition.fromProto(proto)
         app.id -> app
       }(collection.breakOut),
-      pods = msg.getDeprecatedPodsList.asScala.map { proto =>
+      pods = msg.getDeprecatedPodsList.map { proto =>
         val pod = PodDefinition.fromProto(proto)
         pod.id -> pod
       }(collection.breakOut),
-      groupsById = msg.getGroupsList.asScala.map(fromProto).map(group => group.id -> group)(collection.breakOut),
-      dependencies = msg.getDependenciesList.asScala.map(PathId.apply)(collection.breakOut),
+      groupsById = msg.getGroupsList.map(fromProto).map(group => group.id -> group)(collection.breakOut),
+      dependencies = msg.getDependenciesList.map(PathId.apply)(collection.breakOut),
       version = Timestamp(msg.getVersion)
     )
   }
@@ -310,6 +321,7 @@ object Group {
         AppDefinition.validNestedAppDefinition(group.id.canonicalPath(base), enabledFeatures))
       group is noAppsAndPodsWithSameId
       group is noAppsAndGroupsWithSameName
+      group is noPodsAndGroupsWithSameName
       group is conditional[Group](_.id.isRoot)(noCyclicDependencies)
       group.groups is every(valid(validNestedGroup(group.id.canonicalPath(base))))
     }
@@ -332,6 +344,13 @@ object Group {
     isTrue("Groups and Applications may not have the same identifier.") { group =>
       val groupIds = group.groupIds
       val clashingIds = groupIds.intersect(group.apps.keySet)
+      clashingIds.isEmpty
+    }
+
+  private def noPodsAndGroupsWithSameName: Validator[Group] =
+    isTrue("Groups and Pods may not have the same identifier.") { group =>
+      val groupIds = group.groupIds
+      val clashingIds = groupIds.intersect(group.pods.keySet)
       clashingIds.isEmpty
     }
 

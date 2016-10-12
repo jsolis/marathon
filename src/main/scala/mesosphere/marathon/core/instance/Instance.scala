@@ -1,14 +1,15 @@
-package mesosphere.marathon.core.instance
+package mesosphere.marathon
+package core.instance
 
 import java.util.Base64
 
 import com.fasterxml.uuid.{ EthernetAddress, Generators }
-import mesosphere.marathon.Protos
 import mesosphere.marathon.core.instance.Instance.InstanceState
 import mesosphere.marathon.core.instance.update.{ InstanceChangedEventsGenerator, InstanceUpdateEffect, InstanceUpdateOperation }
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.core.task.update.{ TaskUpdateEffect, TaskUpdateOperation }
 import mesosphere.marathon.state.{ MarathonState, PathId, Timestamp }
+import mesosphere.marathon.stream._
 import mesosphere.mesos.Placed
 import org.apache._
 import org.apache.mesos.Protos.Attribute
@@ -19,9 +20,6 @@ import scala.annotation.tailrec
 // TODO: Remove timestamp format
 import mesosphere.marathon.api.v2.json.Formats.TimestampFormat
 import play.api.libs.json.{ Format, JsResult, JsString, JsValue, Json }
-
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
 
 // TODO: remove MarathonState stuff once legacy persistence is gone
 case class Instance(
@@ -74,20 +72,20 @@ case class Instance(
           }
         }.getOrElse(InstanceUpdateEffect.Failure(s"$taskId not found in $instanceId"))
 
-      case InstanceUpdateOperation.LaunchOnReservation(_, version, timestamp, status, hostPorts) =>
+      case InstanceUpdateOperation.LaunchOnReservation(_, newRunSpecVersion, timestamp, status, hostPorts) =>
         if (this.isReserved) {
           require(tasksMap.size == 1, "Residency is not yet implemented for task groups")
 
           // TODO(PODS): make this work for taskGroups
           val task = tasksMap.values.head
-          val taskEffect = task.update(TaskUpdateOperation.LaunchOnReservation(runSpecVersion, status, hostPorts))
+          val taskEffect = task.update(TaskUpdateOperation.LaunchOnReservation(newRunSpecVersion, status, hostPorts))
           taskEffect match {
             case TaskUpdateEffect.Update(updatedTask) =>
               val updated = this.copy(
                 state = state.copy(
                   status = InstanceStatus.Staging,
                   since = timestamp,
-                  version = version
+                  version = newRunSpecVersion
                 ),
                 tasksMap = tasksMap.updated(task.taskId, updatedTask)
               )
@@ -141,7 +139,7 @@ case class Instance(
 
   private[instance] def updatedInstance(updatedTask: Task, now: Timestamp): Instance = {
     val updatedTasks = tasksMap.updated(updatedTask.taskId, updatedTask)
-    copy(tasksMap = updatedTasks, state = Instance.newInstanceState(Some(state), updatedTasks, now))
+    copy(tasksMap = updatedTasks, state = Instance.newInstanceState(Some(state), updatedTasks, now, runSpecVersion))
   }
 }
 
@@ -191,9 +189,15 @@ object Instance {
 
   // TODO(PODS-BLOCKER) ju remove apply
   def apply(task: Task): Instance = {
+    val version = task.version.getOrElse {
+      // TODO(PODS): fix this
+      log.error("A default Timestamp.zero breaks things!")
+      Timestamp.zero
+    }
+
     val since = task.status.startedAt.getOrElse(task.status.stagedAt)
     val tasksMap = Map(task.taskId -> task)
-    val state = newInstanceState(None, tasksMap, since)
+    val state = newInstanceState(None, tasksMap, since, version)
 
     new Instance(task.taskId.instanceId, task.agentInfo, state, tasksMap)
   }
@@ -203,15 +207,10 @@ object Instance {
   private[instance] def newInstanceState(
     maybeOldState: Option[InstanceState],
     newTaskMap: Map[Task.Id, Task],
-    timestamp: Timestamp): InstanceState = {
+    timestamp: Timestamp,
+    runSpecVersion: Timestamp): InstanceState = {
 
     val tasks = newTaskMap.values
-    lazy val defaultVersion: Timestamp = {
-      // TODO(PODS): fix this
-      log.error("A default Timestamp.zero breaks things!")
-      Timestamp.zero
-    }
-    val version = tasks.flatMap(_.version).headOption.getOrElse(defaultVersion)
 
     //compute the new instance status
     val stateMap = tasks.groupBy(_.status.taskStatus)
@@ -236,7 +235,7 @@ object Instance {
     val healthy = computeHealth(tasks.toVector)
     maybeOldState match {
       case Some(state) if state.status == status && state.healthy == healthy => state
-      case _ => InstanceState(status, timestamp, version, healthy)
+      case _ => InstanceState(status, timestamp, runSpecVersion, healthy)
     }
   }
 
@@ -263,27 +262,24 @@ object Instance {
     */
   @tailrec
   private[instance] def computeHealth(tasks: Seq[Task], foundHealthy: Option[Boolean] = None): Option[Boolean] = {
-    if (tasks.isEmpty) {
-      // no unhealthy running tasks and all are running or finished
-      // TODO(PODS): we do not have sufficient information about the configured healthChecks here
-      // E.g. if container A has a healthCheck and B doesn't, b.mesosStatus.hasHealthy will always be `false`,
-      // but we don't know whether this is because no healthStatus is available yet, or because no HC is configured.
-      // This is therefore simplified to `if there is no healthStatus with getHealthy == false, healthy is true`
-      log.info("1: foundHealthy = {}", foundHealthy)
-      foundHealthy
-    } else if (isRunningUnhealthy(tasks.head)) {
-      // there is a running task that is unhealthy => the instance is considered unhealthy
-      log.info("2: foundRunningUnhealthy")
-      Some(false)
-    } else if (isPending(tasks.head)) {
-      // there is a task that is NOT Running or Finished => None
-      log.info(s"2: foundPending: ${tasks.head.status.taskStatus}, hasHealthy = {}", tasks.head.status.mesosStatus.fold("")(_.hasHealthy.toString))
-      None
-    } else if (isRunningHealthy(tasks.head)) {
-      log.info("2: foundRunningHealthy")
-      computeHealth(tasks.tail, Some(true))
-    } else {
-      computeHealth(tasks.tail, foundHealthy)
+    tasks match {
+      case Nil =>
+        // no unhealthy running tasks and all are running or finished
+        // TODO(PODS): we do not have sufficient information about the configured healthChecks here
+        // E.g. if container A has a healthCheck and B doesn't, b.mesosStatus.hasHealthy will always be `false`,
+        // but we don't know whether this is because no healthStatus is available yet, or because no HC is configured.
+        // This is therefore simplified to `if there is no healthStatus with getHealthy == false, healthy is true`
+        foundHealthy
+      case head +: tail if isRunningUnhealthy(head) =>
+        // there is a running task that is unhealthy => the instance is considered unhealthy
+        Some(false)
+      case head +: tail if isPending(head) =>
+        // there is a task that is NOT Running or Finished => None
+        None
+      case head +: tail if isRunningHealthy(head) =>
+        computeHealth(tail, Some(true))
+      case head +: tail if !isRunningHealthy(head) =>
+        computeHealth(tail, foundHealthy)
     }
   }
 
@@ -335,7 +331,7 @@ object Instance {
     def apply(offer: org.apache.mesos.Protos.Offer): AgentInfo = AgentInfo(
       host = offer.getHostname,
       agentId = Some(offer.getSlaveId.getValue),
-      attributes = offer.getAttributesList.asScala.toVector
+      attributes = offer.getAttributesList.toIndexedSeq
     )
   }
 

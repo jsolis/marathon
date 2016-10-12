@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 import mesosphere.marathon.state.Timestamp
 import mesosphere.marathon.core.task.Task
 import org.apache.mesos.Protos.TaskStatus.Reason
-import org.apache.mesos.Protos.{TaskState, TaskStatus}
+import org.apache.mesos.Protos.{ TaskState, TaskStatus }
 
 object MesosTaskStatusTestHelper {
   def mesosStatus(

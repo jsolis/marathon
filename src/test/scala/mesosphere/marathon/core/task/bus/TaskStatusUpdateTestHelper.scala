@@ -92,16 +92,19 @@ object TaskStatusUpdateTestHelper {
     taskUpdateFor(instance, InstanceStatus.Staging, status)
   }
 
-  def finished(instance: Instance = defaultInstance) = {
-    val taskId = Task.Id.forInstanceId(instance.instanceId, None)
+  def finished(instance: Instance = defaultInstance, container: Option[MesosContainer] = None) = {
+    val taskId = Task.Id.forInstanceId(instance.instanceId, container)
     val status = MesosTaskStatusTestHelper.finished(taskId)
-    taskExpungeFor(instance, InstanceStatus.Finished, status)
+    taskUpdateFor(instance, InstanceStatus.Finished, status)
   }
 
   def lost(reason: Reason, instance: Instance = defaultInstance, maybeMessage: Option[String] = None) = {
     val taskId = Task.Id.forInstanceId(instance.instanceId, None)
-    val mesosStatus = MesosTaskStatusTestHelper.mesosStatus(state = TaskState.TASK_LOST,
-      maybeReason = Some(reason), maybeMessage = maybeMessage)
+    val mesosStatus = MesosTaskStatusTestHelper.mesosStatus(
+      state = TaskState.TASK_LOST,
+      maybeReason = Some(reason), maybeMessage = maybeMessage,
+      taskId = taskId
+    )
     val marathonTaskStatus = MarathonTaskStatus(mesosStatus)
 
     marathonTaskStatus match {
@@ -142,25 +145,27 @@ object TaskStatusUpdateTestHelper {
     val status = MesosTaskStatusTestHelper.error(Task.Id.forInstanceId(instance.instanceId, None))
     taskExpungeFor(instance, InstanceStatus.Error, status)
   }
-
-  //TODO(kjeschkies): I don't think these updates should be expunge updates. What's the distinction?
-  def failed(instance: Instance = defaultInstance) = {
-    val status = MesosTaskStatusTestHelper.failed(Task.Id.forInstanceId(instance.instanceId, None))
-    taskExpungeFor(instance, InstanceStatus.Failed, status)
+  def failed(instance: Instance = defaultInstance, container: Option[MesosContainer] = None) = {
+    val taskId = Task.Id.forInstanceId(instance.instanceId, container)
+    val status = MesosTaskStatusTestHelper.failed(taskId)
+    taskUpdateFor(instance, InstanceStatus.Failed, status)
   }
 
-  def gone(instance: Instance = defaultInstance) = {
-    val status = MesosTaskStatusTestHelper.gone(Task.Id.forInstanceId(instance.instanceId, None))
-    taskExpungeFor(instance, InstanceStatus.Gone, status)
+  def gone(instance: Instance = defaultInstance, container: Option[MesosContainer] = None) = {
+    val taskId = Task.Id.forInstanceId(instance.instanceId, container)
+    val status = MesosTaskStatusTestHelper.gone(taskId)
+    taskUpdateFor(instance, InstanceStatus.Gone, status)
   }
 
-  def dropped(instance: Instance = defaultInstance) = {
-    val status = MesosTaskStatusTestHelper.dropped(Task.Id.forInstanceId(instance.instanceId, None))
-    taskExpungeFor(instance, InstanceStatus.Dropped, status)
+  def dropped(instance: Instance = defaultInstance, container: Option[MesosContainer] = None) = {
+    val taskId = Task.Id.forInstanceId(instance.instanceId, container)
+    val status = MesosTaskStatusTestHelper.dropped(taskId)
+    taskUpdateFor(instance, InstanceStatus.Dropped, status)
   }
 
-  def unknown(instance: Instance = defaultInstance) = {
-    val status = MesosTaskStatusTestHelper.unknown(Task.Id.forInstanceId(instance.instanceId, None))
-    taskExpungeFor(instance, InstanceStatus.Unknown, status)
+  def unknown(instance: Instance = defaultInstance, container: Option[MesosContainer] = None) = {
+    val taskId = Task.Id.forInstanceId(instance.instanceId, container)
+    val status = MesosTaskStatusTestHelper.unknown(taskId)
+    taskUpdateFor(instance, InstanceStatus.Unknown, status)
   }
 }
