@@ -22,6 +22,8 @@ import mesosphere.marathon.api.v2.json.Formats._
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 
+import scala.concurrent.duration._
+
 /**
   * The state for launching a task. This might be a launched task or a reservation for launching a task or both.
   *
@@ -299,6 +301,7 @@ object Task {
       status: Status,
       hostPorts: Seq[Int]) extends Task {
 
+    import Timestamp._
     import LaunchedEphemeral.log
 
     override def reservationWithVolumes: Option[Reservation] = None
@@ -326,7 +329,14 @@ object Task {
         ))
         TaskUpdateEffect.Update(newState = updatedTask)
 
-      //case TaskUpdateOperation.MesosUpdate(InstanceStatus.Unreachable, mesosStatus, now) if hasExpired =>
+      // The task has been unreachable for more than the valid time.
+      // We mark it as unknown so that Marathon will expunge it.
+      case TaskUpdateOperation.MesosUpdate(Condition.Unreachable, mesosStatus, now) if expired(mesosStatus.getUnreachableTime, now) =>
+        val updated = copy(status = status.copy(
+          mesosStatus = Some(mesosStatus), // TODO: Should this be set to a TASK_UNKNOWN?
+          taskStatus = Condition.Unknown))
+        TaskUpdateEffect.Update(updated)
+
 
       // The Terminal extractor applies specific logic e.g. when an Unreachable task becomes Gone
       case TaskUpdateOperation.MesosUpdate(newStatus: Terminal, mesosStatus, _) =>
@@ -350,6 +360,9 @@ object Task {
           TaskUpdateEffect.Noop
         }
     }
+
+    // TODO: Do not hardcode expiration
+    private def expired(created: Timestamp, now: Timestamp): Boolean = created.until(now) >= 15.minutes
   }
 
   object LaunchedEphemeral {
