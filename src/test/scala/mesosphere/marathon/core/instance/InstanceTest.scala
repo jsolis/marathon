@@ -9,9 +9,9 @@ import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.core.task.bus.MesosTaskStatusTestHelper
 import mesosphere.marathon.state.PathId._
 import mesosphere.marathon.state.Timestamp
-import org.scalatest.{FunSuite, GivenWhenThen, Matchers}
+import org.scalatest.{ FunSuite, GivenWhenThen, Matchers }
 
-import scala.concurrent.duration._
+//import scala.concurrent.duration._
 
 class InstanceTest extends FunSuite with Matchers with GivenWhenThen {
 
@@ -30,17 +30,18 @@ class InstanceTest extends FunSuite with Matchers with GivenWhenThen {
     (Running, Gone, Seq(Running, Gone, Dropped)),
     (Running, Dropped, Seq(Unreachable, Dropped))
   )
-  stateChangeCases.foreach { case (from, to, withTasks) =>
-    test(s"State change from $from to $to with $withTasks is computed correctly") {
-      Given(s"An instance in status $from with ${withTasks.size} Tasks in status $from")
-      val (instance, tasks) = instanceWith(from, withTasks)
+  stateChangeCases.foreach {
+    case (from, to, withTasks) =>
+      test(s"State change from $from to $to with $withTasks is computed correctly") {
+        Given(s"An instance in status $from with ${withTasks.size} Tasks in status $from")
+        val (instance, tasks) = instanceWith(from, withTasks)
 
-      When(s"The tasks become ${withTasks.mkString(", ")}")
-      val status = Instance.newInstanceState(Some(instance.state), tasks, clock.now(), runSpecVersion = clock.now())
+        When(s"The tasks become ${withTasks.mkString(", ")}")
+        val status = Instance.newInstanceState(Some(instance.state), tasks, clock.now())
 
-      Then(s"The status should be $to")
-      status.status should be(to)
-    }
+        Then(s"The status should be $to")
+        status.condition should be(to)
+      }
   }
 
   test("State update a running instance with unreachable") {
@@ -59,25 +60,25 @@ class InstanceTest extends FunSuite with Matchers with GivenWhenThen {
     effect shouldBe a[InstanceUpdateEffect.Update]
   }
 
-  test("State update with expired unreachable") {
-    Given("a running instance")
-    val (instance, _) = instanceWith(Running, Seq(Running))
-
-    And("an expired task unreachable update")
-    val taskId = instance.tasksMap.head._1
-    val status = MesosTaskStatusTestHelper.unreachable(taskId, clock.now)
-
-    // Forward time
-    clock += 16.minutes
-
-    val operation = InstanceUpdateOperation.MesosUpdate(instance, status, clock.now)
-
-    When("the task update is processed by the instance")
-    val effect = instance.update(operation)
-
-    Then("the effect is an expunge")
-    effect shouldBe a[InstanceUpdateEffect.Expunge]
-  }
+  //  test("State update with expired unreachable") {
+  //    Given("a running instance")
+  //    val (instance, _) = instanceWith(Running, Seq(Running))
+  //
+  //    And("an expired task unreachable update")
+  //    val taskId = instance.tasksMap.head._1
+  //    val status = MesosTaskStatusTestHelper.unreachable(taskId, clock.now)
+  //
+  //    // Forward time
+  //    clock += 16.minutes
+  //
+  //    val operation = InstanceUpdateOperation.MesosUpdate(instance, status, clock.now)
+  //
+  //    When("the task update is processed by the instance")
+  //    val effect = instance.update(operation)
+  //
+  //    Then("the effect is an expunge")
+  //    effect shouldBe a[InstanceUpdateEffect.Expunge]
+  //  }
 
   val id = "/test".toPath
   val clock = ConstantClock()

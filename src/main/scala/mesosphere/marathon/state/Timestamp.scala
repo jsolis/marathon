@@ -1,10 +1,10 @@
 package mesosphere.marathon.state
 
-import java.time.{Instant, OffsetDateTime}
+import java.time.{ Instant, OffsetDateTime }
 import java.util.concurrent.TimeUnit
 
 import org.apache.mesos.Protos.TimeInfo
-import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time.{ DateTime, DateTimeZone }
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions

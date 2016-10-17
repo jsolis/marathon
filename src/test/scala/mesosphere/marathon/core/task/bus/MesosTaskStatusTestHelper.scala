@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 import mesosphere.marathon.state.Timestamp
 import mesosphere.marathon.core.task.Task
 import org.apache.mesos.Protos.TaskStatus.Reason
-import org.apache.mesos.Protos.{TaskState, TaskStatus, TimeInfo}
+import org.apache.mesos.Protos.{ TaskState, TaskStatus, TimeInfo }
 
 object MesosTaskStatusTestHelper {
   def mesosStatus(
@@ -44,7 +44,7 @@ object MesosTaskStatusTestHelper {
   def unreachable(taskId: Task.Id = Task.Id(UUID.randomUUID().toString), since: Timestamp = Timestamp.zero) = {
     val time = TimeInfo.newBuilder().setNanoseconds(since.toDateTime.getMillis * 1000000)
     mesosStatus(state = TaskState.TASK_UNREACHABLE, taskId = taskId).toBuilder
-        .setUnreachableTime(time)
-        .build()
+      .setUnreachableTime(time)
+      .build()
   }
 }

@@ -301,7 +301,7 @@ object Task {
       status: Status,
       hostPorts: Seq[Int]) extends Task {
 
-    import Timestamp._
+    //    import Timestamp._
     import LaunchedEphemeral.log
 
     override def reservationWithVolumes: Option[Reservation] = None
@@ -331,12 +331,11 @@ object Task {
 
       // The task has been unreachable for more than the valid time.
       // We mark it as unknown so that Marathon will expunge it.
-      case TaskUpdateOperation.MesosUpdate(Condition.Unreachable, mesosStatus, now) if expired(mesosStatus.getUnreachableTime, now) =>
-        val updated = copy(status = status.copy(
-          mesosStatus = Some(mesosStatus), // TODO: Should this be set to a TASK_UNKNOWN?
-          taskStatus = Condition.Unknown))
-        TaskUpdateEffect.Update(updated)
-
+      //      case TaskUpdateOperation.MesosUpdate(Condition.Unreachable, mesosStatus, now) if expired(mesosStatus.getUnreachableTime, now) =>
+      //        val updated = copy(status = status.copy(
+      //          mesosStatus = Some(mesosStatus), // TODO: Should this be set to a TASK_UNKNOWN?
+      //          condition = Condition.Unknown))
+      //        TaskUpdateEffect.Update(updated)
 
       // The Terminal extractor applies specific logic e.g. when an Unreachable task becomes Gone
       case TaskUpdateOperation.MesosUpdate(newStatus: Terminal, mesosStatus, _) =>
