@@ -48,7 +48,7 @@ case class Instance(
     op match {
       case InstanceUpdateOperation.MesosUpdate(instance, status, mesosStatus, now) =>
         val taskId = Task.Id(mesosStatus.getTaskId)
-        tasks.find(_.taskId == taskId).map { task =>
+        tasksMap.get(taskId).map { task =>
           val taskEffect = task.update(TaskUpdateOperation.MesosUpdate(status, mesosStatus, now))
           taskEffect match {
             case TaskUpdateEffect.Update(newTaskState) =>

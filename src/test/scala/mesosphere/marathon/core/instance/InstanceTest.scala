@@ -4,10 +4,14 @@ import mesosphere.marathon.core.base.ConstantClock
 import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.Instance.InstanceState
 import mesosphere.marathon.core.condition.Condition._
+import mesosphere.marathon.core.instance.update.{ InstanceUpdateOperation, InstanceUpdateEffect }
 import mesosphere.marathon.core.task.Task
+import mesosphere.marathon.core.task.bus.MesosTaskStatusTestHelper
 import mesosphere.marathon.state.PathId._
 import mesosphere.marathon.state.Timestamp
-import org.scalatest.{ FunSuite, GivenWhenThen, Matchers }
+import org.scalatest.{FunSuite, GivenWhenThen, Matchers}
+
+import scala.concurrent.duration._
 
 class InstanceTest extends FunSuite with Matchers with GivenWhenThen {
 
@@ -37,6 +41,42 @@ class InstanceTest extends FunSuite with Matchers with GivenWhenThen {
       Then(s"The status should be $to")
       status.status should be(to)
     }
+  }
+
+  test("State update a running instance with unreachable") {
+    Given("a running instance")
+    val (instance, _) = instanceWith(Running, Seq(Running))
+
+    And("a task unreachable update")
+    val taskId = instance.tasksMap.head._1
+    val status = MesosTaskStatusTestHelper.unreachable(taskId, clock.now)
+    val operation = InstanceUpdateOperation.MesosUpdate(instance, status, clock.now)
+
+    When("the task update is processed by the instance")
+    val effect = instance.update(operation)
+
+    Then("the effect is an update")
+    effect shouldBe a[InstanceUpdateEffect.Update]
+  }
+
+  test("State update with expired unreachable") {
+    Given("a running instance")
+    val (instance, _) = instanceWith(Running, Seq(Running))
+
+    And("an expired task unreachable update")
+    val taskId = instance.tasksMap.head._1
+    val status = MesosTaskStatusTestHelper.unreachable(taskId, clock.now)
+
+    // Forward time
+    clock += 16.minutes
+
+    val operation = InstanceUpdateOperation.MesosUpdate(instance, status, clock.now)
+
+    When("the task update is processed by the instance")
+    val effect = instance.update(operation)
+
+    Then("the effect is an expunge")
+    effect shouldBe a[InstanceUpdateEffect.Expunge]
   }
 
   val id = "/test".toPath
