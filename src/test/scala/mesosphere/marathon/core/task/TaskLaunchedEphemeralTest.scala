@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 class TaskLaunchedEphemeralTest extends UnitTest {
 
   "LaunchedEphemeral" when {
-    "updating a running task with a TASK_UNREACHABLE" ignore {
+    "updating a running task with a TASK_UNREACHABLE" should {
       val f = new Fixture
 
       val task = TestTaskBuilder.Helper.minimalRunning(appId = f.appId, since = f.clock.now)
@@ -34,33 +34,6 @@ class TaskLaunchedEphemeralTest extends UnitTest {
       "update to unreachable instance status" in {
         val newStatus = effect.asInstanceOf[TaskUpdateEffect.Update].newState.status.condition
         newStatus should be(Condition.Unreachable)
-      }
-    }
-
-    "updating a running task with a TASK_UNREACHABLE that is older than 15 minutes" ignore {
-      val f = new Fixture
-
-      val task = TestTaskBuilder.Helper.minimalRunning(appId = f.appId, since = f.clock.now)
-
-      f.clock += 5.seconds
-
-      val status = MesosTaskStatusTestHelper.unreachable(task.taskId, f.clock.now)
-
-      // 16 minutes pass so the status happened more than 15 minutes ago.
-      f.clock += 16.minutes
-
-      val update = TaskUpdateOperation.MesosUpdate(TaskCondition(status), status, f.clock.now)
-
-      val effect = task.update(update)
-
-      "result in an update" in { effect shouldBe a[TaskUpdateEffect.Update] }
-      "update to unreachable task status" in {
-        val newStatus = effect.asInstanceOf[TaskUpdateEffect.Update].newState.status.mesosStatus.get.getState
-        newStatus should be(TaskState.TASK_UNREACHABLE)
-      }
-      "update to unknown instance state" in {
-        val newStatus = effect.asInstanceOf[TaskUpdateEffect.Update].newState.status.condition
-        newStatus should be(Condition.Unknown)
       }
     }
   }

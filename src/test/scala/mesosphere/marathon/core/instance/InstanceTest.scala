@@ -60,26 +60,6 @@ class InstanceTest extends FunSuite with Matchers with GivenWhenThen {
     effect shouldBe a[InstanceUpdateEffect.Update]
   }
 
-  //  test("State update with expired unreachable") {
-  //    Given("a running instance")
-  //    val (instance, _) = instanceWith(Running, Seq(Running))
-  //
-  //    And("an expired task unreachable update")
-  //    val taskId = instance.tasksMap.head._1
-  //    val status = MesosTaskStatusTestHelper.unreachable(taskId, clock.now)
-  //
-  //    // Forward time
-  //    clock += 16.minutes
-  //
-  //    val operation = InstanceUpdateOperation.MesosUpdate(instance, status, clock.now)
-  //
-  //    When("the task update is processed by the instance")
-  //    val effect = instance.update(operation)
-  //
-  //    Then("the effect is an expunge")
-  //    effect shouldBe a[InstanceUpdateEffect.Expunge]
-  //  }
-
   val id = "/test".toPath
   val clock = ConstantClock()
 
