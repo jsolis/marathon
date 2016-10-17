@@ -1,17 +1,17 @@
 package mesosphere.marathon.core.task
 
-import mesosphere.marathon.core.instance.InstanceStatus
-import mesosphere.marathon.core.task.state.MarathonTaskStatusMapping
+import mesosphere.marathon.core.condition.Condition
+import mesosphere.marathon.core.task.state.TaskConditionMapping
 import org.apache.mesos
 import org.apache.mesos.Protos.TaskStatus.Reason
 
-object MarathonTaskStatus {
+object TaskCondition {
 
   import org.apache.mesos.Protos.TaskState._
-  import InstanceStatus._
+  import Condition._
 
   //scalastyle:off cyclomatic.complexity
-  def apply(taskStatus: mesos.Protos.TaskStatus): InstanceStatus = {
+  def apply(taskStatus: mesos.Protos.TaskStatus): Condition = {
     taskStatus.getState match {
 
       // The task description contains an error.
@@ -78,12 +78,12 @@ object MarathonTaskStatus {
 
   private[this] val MessageIndicatingUnknown = "Reconciliation: Task is unknown to the"
 
-  private[this] def inferStateForLost(reason: Reason, message: String): InstanceStatus = {
-    if (message.startsWith(MessageIndicatingUnknown) || MarathonTaskStatusMapping.Unknown(reason)) {
+  private[this] def inferStateForLost(reason: Reason, message: String): Condition = {
+    if (message.startsWith(MessageIndicatingUnknown) || TaskConditionMapping.Unknown(reason)) {
       Unknown
-    } else if (MarathonTaskStatusMapping.Gone(reason)) {
+    } else if (TaskConditionMapping.Gone(reason)) {
       Gone
-    } else if (MarathonTaskStatusMapping.Unreachable(reason)) {
+    } else if (TaskConditionMapping.Unreachable(reason)) {
       Unreachable
     } else {
       Dropped
