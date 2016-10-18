@@ -191,15 +191,23 @@ class InstanceUpdateOpResolverTest
     val f = new Fixture
 
     Given("an existing lost task")
-    f.taskTracker.instance(f.unreachableInstance.instanceId) returns Future.successful(Some(f.unreachableInstance))
+    val lostInstance = TestInstanceBuilder.newBuilder(f.appId).addTaskLost().getInstance()
+    f.taskTracker.instance(lostInstance.instanceId) returns Future.successful(Some(lostInstance))
 
     When("A subsequent TASK_LOST update is received")
     val reason = mesos.Protos.TaskStatus.Reason.REASON_SLAVE_DISCONNECTED
-    val stateOp: InstanceUpdateOperation.MesosUpdate = TaskStatusUpdateTestHelper.lost(reason, f.unreachableInstance).operation.asInstanceOf[InstanceUpdateOperation.MesosUpdate]
+    val taskId = Task.Id.forInstanceId(lostInstance.instanceId, None)
+    val mesosStatus = MesosTaskStatusTestHelper.mesosStatus(
+      state = mesos.Protos.TaskState.TASK_LOST,
+      maybeReason = Some(reason),
+      taskId = taskId
+    )
+    val marathonTaskCondition = TaskCondition(mesosStatus)
+    val stateOp = InstanceUpdateOperation.MesosUpdate(lostInstance, marathonTaskCondition, mesosStatus, f.clock.now)
     val stateChange = f.stateOpResolver.resolve(stateOp).futureValue
 
     Then("taskTracker.task is called")
-    verify(f.taskTracker).instance(f.unreachableInstance.instanceId)
+    verify(f.taskTracker).instance(lostInstance.instanceId)
 
     And("the result is an noop")
     stateChange shouldBe a[InstanceUpdateEffect.Noop]

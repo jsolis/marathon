@@ -95,4 +95,22 @@ class ExpungeOverdueLostTasksActorTest extends MarathonSpec
     verify(stateOpProcessor, once).process(InstanceUpdateOperation.ForceExpunge(unreachable1.instanceId))
     noMoreInteractions(stateOpProcessor)
   }
+
+  test("backwards compatibility with old TASK_LOST status") {
+    Given("two unreachable tasks, one overdue")
+    // Note that both won't have unreachable time set.
+    val unreachable1 = TestInstanceBuilder.newBuilder("/unreachable1".toPath).addTaskLost(since = Timestamp.zero).getInstance()
+    val unreachable2 = TestInstanceBuilder.newBuilder("/unreachable2".toPath).addTaskLost(since = Timestamp.now()).getInstance()
+
+    taskTracker.instancesBySpec()(any[ExecutionContext]) returns Future.successful(InstancesBySpec.forInstances(unreachable1, unreachable2))
+
+    When("a check is performed")
+    val testProbe = TestProbe()
+    testProbe.send(checkActor, ExpungeOverdueLostTasksActor.Tick)
+    testProbe.receiveOne(3.seconds)
+
+    And("one kill call is issued")
+    verify(stateOpProcessor, once).process(InstanceUpdateOperation.ForceExpunge(unreachable1.instanceId))
+    noMoreInteractions(stateOpProcessor)
+  }
 }

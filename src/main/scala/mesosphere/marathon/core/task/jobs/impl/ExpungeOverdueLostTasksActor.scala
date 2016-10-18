@@ -2,17 +2,16 @@ package mesosphere.marathon.core.task.jobs.impl
 
 import akka.actor.{ Actor, ActorLogging, Cancellable, Props }
 import akka.pattern.pipe
+import java.util.concurrent.TimeUnit
 import mesosphere.marathon.core.base.Clock
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.instance.update.InstanceUpdateOperation
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.core.task.jobs.TaskJobsConfig
 import mesosphere.marathon.core.task.tracker.{ InstanceTracker, TaskStateOpProcessor }
 import mesosphere.marathon.core.task.tracker.InstanceTracker.SpecInstances
-import mesosphere.marathon.state.PathId
+import mesosphere.marathon.state.{ PathId, Timestamp }
 import org.apache.mesos.Protos.TaskStatus
-import org.joda.time.DateTime
-
-import scala.concurrent.duration._
 
 class ExpungeOverdueLostTasksActor(
     clock: Clock,
@@ -21,6 +20,7 @@ class ExpungeOverdueLostTasksActor(
     stateOpProcessor: TaskStateOpProcessor) extends Actor with ActorLogging {
 
   import ExpungeOverdueLostTasksActor._
+  import Timestamp._
   implicit val ec = context.dispatcher
 
   var tickTimer: Option[Cancellable] = None
@@ -42,23 +42,43 @@ class ExpungeOverdueLostTasksActor(
     case InstanceTracker.InstancesBySpec(appTasks) => filterLostGCTasks(appTasks).foreach(expungeLostGCTask)
   }
 
-  def expungeLostGCTask(task: Task): Unit = {
-    val timestamp = new DateTime(task.mesosStatus.fold(0L)(_.getTimestamp.toLong * 1000))
-    log.warning(s"Task ${task.taskId} is lost since $timestamp and will be expunged.")
-    val stateOp = InstanceUpdateOperation.ForceExpunge(task.taskId.instanceId)
+  def expungeLostGCTask(instance: Instance): Unit = {
+    //    val timestamp: Timestamp = task.mesosStatus.fold(clock.now)(Timestamp.toTimestamp(_.getUnreachableTime))
+    //    log.warning(s"Task ${task.taskId} is lost since $timestamp and will be expunged.")
+    val stateOp = InstanceUpdateOperation.ForceExpunge(instance.instanceId)
     stateOpProcessor.process(stateOp)
   }
 
-  def filterLostGCTasks(instances: Map[PathId, SpecInstances]): Iterable[Task] = {
-    def isTaskTimedOut(taskStatus: Option[TaskStatus]): Boolean = {
-      taskStatus.fold(false) { status =>
-        val age = clock.now().toDateTime.minus(status.getTimestamp.toLong * 1000).getMillis.millis
-        age > config.taskLostExpungeGC
-      }
+  /**
+    * @return true if created is [[mesosphere.marathon.core.task.jobs.TaskJobsConfig.taskLostExpungeGC]] older than now.
+    */
+  private def isExpired(created: Timestamp, now: Timestamp): Boolean = created.until(now) > config.taskLostExpungeGC
+
+  /**
+    * @return true if task has an unreachable status that is expired.
+    */
+  private def isExpired(status: TaskStatus, now: Timestamp): Boolean =
+    if (status.hasUnreachableTime) {
+      isExpired(status.getUnreachableTime, now)
+    } else {
+      val since = Timestamp(TimeUnit.MICROSECONDS.toMillis(status.getTimestamp.toLong))
+      isExpired(since, now)
     }
-    instances.values.flatMap(_.instances.flatMap(instance =>
-      instance.tasks.filter(task => task.isUnreachable && isTaskTimedOut(task.mesosStatus))))
-  }
+
+  /**
+    * @return true if task has an unreachable status that is [[mesosphere.marathon.core.task.jobs.TaskJobsConfig.taskLostExpungeGC]]
+    *         millis older than now.
+    */
+  private def withExpiredUnreachableStatus(now: Timestamp)(task: Task): Boolean =
+    task.mesosStatus.fold(false)(status => isExpired(status, now))
+
+  /**
+    * @return instances that have been unreachable for more than [[mesosphere.marathon.core.task.jobs.TaskJobsConfig.taskLostExpungeGC]] millis.
+    */
+  def filterLostGCTasks(instances: Map[PathId, SpecInstances]) =
+    instances.values.flatMap(_.instances)
+      .withFilter(_.isUnreachable)
+      .withFilter(_.tasks.exists(withExpiredUnreachableStatus(clock.now())))
 }
 
 object ExpungeOverdueLostTasksActor {
