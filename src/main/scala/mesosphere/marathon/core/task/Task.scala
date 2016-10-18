@@ -299,7 +299,6 @@ object Task {
       status: Status,
       hostPorts: Seq[Int]) extends Task {
 
-    //    import Timestamp._
     import LaunchedEphemeral.log
 
     override def reservationWithVolumes: Option[Reservation] = None
