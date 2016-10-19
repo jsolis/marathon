@@ -28,7 +28,8 @@ object InstanceChangedEventsGenerator {
       val ipAddresses = maybeTaskStatus.flatMap(status => Task.MesosStatus.ipAddresses(status))
       val slaveId = maybeTaskStatus.fold("")(_.getSlaveId.getValue)
       val message = maybeTaskStatus.fold("")(status => if (status.hasMessage) status.getMessage else "")
-      val status = condition.toMesosStateName//maybeTaskStatus.fold("")(_.getState.toString)
+      //val status = condition.toMesosStateName
+      val status = maybeTaskStatus.fold("")(_.getState.toString)
 
       val taskEvent = MesosStatusUpdateEvent(
         slaveId,

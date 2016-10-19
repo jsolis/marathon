@@ -54,7 +54,7 @@ class TaskUneachableIntegrationTest extends IntegrationFunSuite
     Then("the task is declared unreachable")
     waitForEventMatching("Task is declared unreachable") { matchEvent("TASK_UNREACHABLE", task) }
 
-    And("a replacement task is started")
+    And("a replacement task is started on a different slave")
     startSlave(slave2) // Start an alternative slave
     waitForEventWith("status_update_event", _.info("taskStatus") == "TASK_RUNNING")
     val tasks = marathon.tasks(app.id).value
@@ -77,7 +77,6 @@ class TaskUneachableIntegrationTest extends IntegrationFunSuite
   }
 
   def matchEvent(status: String, task: ITEnrichedTask): CallbackEvent => Boolean = { event =>
-    log.info(s"!!! Receive event: $event")
     event.info.get("taskStatus").contains(status) &&
       event.info.get("taskId").contains(task.id)
   }

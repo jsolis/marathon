@@ -51,9 +51,9 @@ case class Instance(
         tasksMap.get(taskId).map { task =>
           val taskEffect = task.update(TaskUpdateOperation.MesosUpdate(status, mesosStatus, now))
           taskEffect match {
-            case TaskUpdateEffect.Update(newTaskState) =>
-              val updated: Instance = updatedInstance(newTaskState, now)
-              val events = eventsGenerator.events(status, updated, Some(task), now)
+            case TaskUpdateEffect.Update(updatedTask) =>
+              val updated: Instance = updatedInstance(updatedTask, now)
+              val events = eventsGenerator.events(status, updated, Some(updatedTask), now)
               if (updated.tasksMap.valuesIterator.forall(_.isTerminal)) {
                 Instance.log.info("all tasks of {} are terminal, requesting to expunge", updated.instanceId)
                 InstanceUpdateEffect.Expunge(updated, events)
