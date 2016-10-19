@@ -9,6 +9,8 @@ import org.openjdk.jmh.infra.Blackhole
 
 import scala.collection.immutable.Seq
 
+import collection.JavaConverters._
+
 @State(Scope.Benchmark)
 object ScalaConversionsState {
   val small: Seq[Int] = 0.to(100)

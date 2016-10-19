@@ -17,12 +17,16 @@ object Features {
   //enable GPUs
   lazy val GPU_RESOURCES = "gpu_resources"
 
+  //enable partition awareness
+  lazy val PARTITION_AWARE = "partition_aware"
+
   lazy val availableFeatures = Map(
     VIPS -> "Enable networking VIPs UI",
     TASK_KILLING -> "Enable the optional TASK_KILLING state, available in Mesos 0.28 and later",
     EXTERNAL_VOLUMES -> "Enable external volumes support in Marathon",
     SECRETS -> "Enable support for secrets in Marathon (experimental)",
-    GPU_RESOURCES -> "Enable support for GPU in Marathon (experimental)"
+    GPU_RESOURCES -> "Enable support for GPU in Marathon (experimental)",
+    PARTITION_AWARE -> "Enable support for more fine grained task statues updates"
   )
 
   def description: String = {
