@@ -30,20 +30,19 @@ class InstanceUpdateTest extends UnitTest {
 
       val result = instance.update(update.operation)
 
-      "result in an update effect" in { result shouldBe a[InstanceUpdateEffect.Update]}
+      "result in an update effect" in { result shouldBe a[InstanceUpdateEffect.Update] }
       "add an instance changed event" in {
         val effect = result.asInstanceOf[InstanceUpdateEffect.Update]
-        effect.events(0) shouldBe a[InstanceChanged]
+        effect.events(1) shouldBe a[InstanceChanged]
       }
       "add a task event" in {
         val effect = result.asInstanceOf[InstanceUpdateEffect.Update]
-        effect.events(1) match {
+        effect.events(0) match {
           case MesosStatusUpdateEvent(_, _, taskStatus, _, _, _, _, _, _, _, _) =>
             taskStatus should be("TASK_UNREACHABLE")
           case _ => fail("Event did not match MesosStatusUpdateEvent")
         }
       }
-
 
     }
 

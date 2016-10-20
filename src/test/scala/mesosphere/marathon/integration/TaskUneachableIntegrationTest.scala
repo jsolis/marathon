@@ -6,10 +6,10 @@ import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 import org.slf4j.LoggerFactory
 
 class TaskUneachableIntegrationTest extends IntegrationFunSuite
-  with WithMesosCluster
-  with Matchers
-  with GivenWhenThen
-  with BeforeAndAfter {
+    with WithMesosCluster
+    with Matchers
+    with GivenWhenThen
+    with BeforeAndAfter {
 
   private val log = LoggerFactory.getLogger(getClass)
 

@@ -351,6 +351,21 @@ object TestTaskBuilder {
 
     }
 
+    def killedTask(
+      taskId: Task.Id,
+      appVersion: Timestamp = Timestamp(1),
+      stagedAt: Long = 2,
+      startedAt: Long = 3): Task.LaunchedEphemeral = {
+
+      startingTask(taskId, appVersion, stagedAt)
+        .withStatus((status: Task.Status) =>
+          status.copy(
+            startedAt = Some(Timestamp(startedAt)),
+            mesosStatus = Some(statusForState(taskId.idString, TaskState.TASK_KILLED))
+          )
+        )
+    }
+
     def healthyTask(appId: PathId): Task.LaunchedEphemeral = healthyTask(Task.Id.forRunSpec(appId))
 
     def healthyTask(taskId: Task.Id): Task.LaunchedEphemeral = {
