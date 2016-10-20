@@ -53,7 +53,7 @@ case class Instance(
           taskEffect match {
             case TaskUpdateEffect.Update(updatedTask) =>
               val updated: Instance = updatedInstance(updatedTask, now)
-              val events = eventsGenerator.events(status, updated, Some(updatedTask), now)
+              val events = eventsGenerator.events(status, updated, Some(task), now, updated.state.condition != this.state.condition)
               if (updated.tasksMap.valuesIterator.forall(_.isTerminal)) {
                 Instance.log.info("all tasks of {} are terminal, requesting to expunge", updated.instanceId)
                 InstanceUpdateEffect.Expunge(updated, events)
