@@ -18,7 +18,7 @@ sealed trait Condition extends Product with Serializable {
     this match {
       // TODO: Map to TASK_GONE etc. when partition awareness is enabled.
       // TODO: Get rip of toMesosStateName entirely since it's not valid to convert a Condition back.
-      // case Gone | Unreachable | Unknown | Dropped => mesos.Protos.TaskState.TASK_LOST.toString
+      case Gone | Unreachable | Unknown | Dropped => mesos.Protos.TaskState.TASK_LOST.toString
       case Created | Reserved => mesos.Protos.TaskState.TASK_STAGING.toString
       case s: Condition => "TASK_" + s.toString.toUpperCase()
     }
