@@ -44,6 +44,7 @@ class ExpungeOverdueLostTasksActor(
   }
 
   def expungeLostGCTask(instance: Instance): Unit = {
+    val since = instance.state.since
     log.warning(s"Instance ${instance.instanceId} is lost since $since and will be expunged.")
     val stateOp = InstanceUpdateOperation.ForceExpunge(instance.instanceId)
     stateOpProcessor.process(stateOp)
