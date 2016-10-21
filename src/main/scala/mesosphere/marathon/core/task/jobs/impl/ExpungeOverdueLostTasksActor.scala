@@ -1,4 +1,5 @@
-package mesosphere.marathon.core.task.jobs.impl
+package mesosphere.marathon
+package core.task.jobs.impl
 
 import akka.actor.{ Actor, ActorLogging, Cancellable, Props }
 import akka.pattern.pipe

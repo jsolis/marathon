@@ -31,9 +31,9 @@ case class Instance(
     runSpecVersion: Timestamp) extends MarathonState[Protos.Json, Instance] with Placed {
 
   // TODO(PODS): check consumers of this def and see if they can use the map instead
-  val tasks = tasksMap.values
+  val tasks = tasksMap.values.to[Seq]
   val runSpecId: PathId = instanceId.runSpecId
-  val isLaunched: Boolean = tasksMap.valuesIterator.forall(task => task.launched.isDefined)
+  val isLaunched: Boolean = tasksMap.values.forall(task => task.launched.isDefined)
 
   import Instance.eventsGenerator
 
@@ -54,7 +54,7 @@ case class Instance(
             case TaskUpdateEffect.Update(updatedTask) =>
               val updated: Instance = updatedInstance(updatedTask, now)
               val events = eventsGenerator.events(status, updated, Some(updatedTask), now, updated.state.condition != this.state.condition)
-              if (updated.tasksMap.valuesIterator.forall(_.isTerminal)) {
+              if (updated.tasksMap.values.forall(_.isTerminal)) {
                 Instance.log.info("all tasks of {} are terminal, requesting to expunge", updated.instanceId)
                 InstanceUpdateEffect.Expunge(updated, events)
               } else {
