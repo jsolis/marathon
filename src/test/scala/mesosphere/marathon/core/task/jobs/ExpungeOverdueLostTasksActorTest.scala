@@ -74,7 +74,7 @@ class ExpungeOverdueLostTasksActorTest extends MarathonSpec
     testProbe.send(checkActor, ExpungeOverdueLostTasksActor.Tick)
     testProbe.receiveOne(3.seconds)
 
-    And("one kill call is issued")
+    And("one expunge is issued")
     verify(stateOpProcessor, once).process(InstanceUpdateOperation.ForceExpunge(unreachable.instanceId))
     noMoreInteractions(stateOpProcessor)
   }
@@ -91,7 +91,7 @@ class ExpungeOverdueLostTasksActorTest extends MarathonSpec
     testProbe.send(checkActor, ExpungeOverdueLostTasksActor.Tick)
     testProbe.receiveOne(3.seconds)
 
-    And("one kill call is issued")
+    And("one expunge is issued")
     verify(stateOpProcessor, once).process(InstanceUpdateOperation.ForceExpunge(unreachable1.instanceId))
     noMoreInteractions(stateOpProcessor)
   }
@@ -109,7 +109,7 @@ class ExpungeOverdueLostTasksActorTest extends MarathonSpec
     testProbe.send(checkActor, ExpungeOverdueLostTasksActor.Tick)
     testProbe.receiveOne(3.seconds)
 
-    And("one kill call is issued")
+    And("one expunge is issued")
     verify(stateOpProcessor, once).process(InstanceUpdateOperation.ForceExpunge(unreachable1.instanceId))
     noMoreInteractions(stateOpProcessor)
   }

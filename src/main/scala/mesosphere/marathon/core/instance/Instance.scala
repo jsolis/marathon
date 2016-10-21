@@ -188,17 +188,9 @@ object Instance {
     Condition.Unknown
   )
 
-  def instancesById(tasks: Iterable[Instance]): Map[Instance.Id, Instance] =
-    tasks.iterator.map(task => task.instanceId -> task).toMap
+  def instancesById(tasks: Seq[Instance]): Map[Instance.Id, Instance] =
+    tasks.map(task => task.instanceId -> task)(collection.breakOut)
 
-  // TODO(PODS-BLOCKER) ju remove apply
-  def apply(task: Task): Instance = {
-    val since = task.status.startedAt.getOrElse(task.status.stagedAt)
-    val tasksMap = Map(task.taskId -> task)
-    val state = newInstanceState(None, tasksMap, since)
-
-    new Instance(task.taskId.instanceId, task.agentInfo, state, tasksMap, task.runSpecVersion)
-  }
   case class InstanceState(condition: Condition, since: Timestamp, healthy: Option[Boolean])
 
   @SuppressWarnings(Array("TraversableHead"))

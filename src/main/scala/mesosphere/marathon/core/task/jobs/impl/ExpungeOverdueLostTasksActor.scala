@@ -40,12 +40,12 @@ class ExpungeOverdueLostTasksActor(
 
   override def receive: Receive = {
     case Tick => taskTracker.instancesBySpec() pipeTo self
-    case InstanceTracker.InstancesBySpec(instances) => filterLostGCTasks(instances).foreach(expungeLostGCTask)
+    case InstanceTracker.InstancesBySpec(instances) => filterLostGCTasks(instances).foreach(expungeLostGCInstance)
   }
 
-  def expungeLostGCTask(instance: Instance): Unit = {
+  def expungeLostGCInstance(instance: Instance): Unit = {
     val since = instance.state.since
-    log.warning(s"Instance ${instance.instanceId} is lost since $since and will be expunged.")
+    log.warning(s"Instance ${instance.instanceId} is unreachable since $since and will be expunged.")
     val stateOp = InstanceUpdateOperation.ForceExpunge(instance.instanceId)
     stateOpProcessor.process(stateOp)
   }
@@ -58,13 +58,13 @@ class ExpungeOverdueLostTasksActor(
   /**
     * @return true if task has an unreachable status that is expired.
     */
-  private def isExpired(status: TaskStatus, now: Timestamp): Boolean =
-    if (status.hasUnreachableTime) {
-      isExpired(status.getUnreachableTime, now)
-    } else {
-      val since = Timestamp(TimeUnit.MICROSECONDS.toMillis(status.getTimestamp.toLong))
-      isExpired(since, now)
-    }
+  private def isExpired(status: TaskStatus, now: Timestamp): Boolean = {
+    val since: Timestamp =
+      if (status.hasUnreachableTime) status.getUnreachableTime
+      else Timestamp(TimeUnit.MICROSECONDS.toMillis(status.getTimestamp.toLong))
+    isExpired(since, now)
+  }
+
 
   /**
     * @return true if task has an unreachable status that is [[mesosphere.marathon.core.task.jobs.TaskJobsConfig.taskLostExpungeGC]]

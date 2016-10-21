@@ -5,7 +5,7 @@ import mesosphere.marathon.integration.setup._
 import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 import org.slf4j.LoggerFactory
 
-class TaskUneachableIntegrationTest extends IntegrationFunSuite
+class TaskUnreachableIntegrationTest extends IntegrationFunSuite
     with WithMesosCluster
     with Matchers
     with GivenWhenThen
@@ -49,7 +49,6 @@ class TaskUneachableIntegrationTest extends IntegrationFunSuite
 
     When("the slave is partitioned")
     stopMesos(slave1)
-    stopMesos(slave2)
 
     Then("the task is declared unreachable")
     waitForEventMatching("Task is declared unreachable") { matchEvent("TASK_UNREACHABLE", task) }
