@@ -68,8 +68,8 @@ class TaskUneachableIntegrationTest extends IntegrationFunSuite
     Then("the task reappears as running")
     waitForEventMatching("Task is declared running") { matchEvent("TASK_RUNNING", task) }
 
-    And("one task is killed")
-    waitForEventWith("status_update_event", _.info("taskStatus") == "TASK_KILLED")
+    And("the replacement task is killed")
+    waitForEventMatching("Replacement task is killed") { matchEvent("TASK_KILLED", replacement) }
 
     And("there is only one running task left")
     marathon.tasks(app.id).value should have size 1

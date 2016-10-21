@@ -39,12 +39,11 @@ class ExpungeOverdueLostTasksActor(
 
   override def receive: Receive = {
     case Tick => taskTracker.instancesBySpec() pipeTo self
-    case InstanceTracker.InstancesBySpec(appTasks) => filterLostGCTasks(appTasks).foreach(expungeLostGCTask)
+    case InstanceTracker.InstancesBySpec(instances) => filterLostGCTasks(instances).foreach(expungeLostGCTask)
   }
 
   def expungeLostGCTask(instance: Instance): Unit = {
-    //    val timestamp: Timestamp = task.mesosStatus.fold(clock.now)(Timestamp.toTimestamp(_.getUnreachableTime))
-    //    log.warning(s"Task ${task.taskId} is lost since $timestamp and will be expunged.")
+    log.warning(s"Instance ${instance.instanceId} is lost since $since and will be expunged.")
     val stateOp = InstanceUpdateOperation.ForceExpunge(instance.instanceId)
     stateOpProcessor.process(stateOp)
   }
