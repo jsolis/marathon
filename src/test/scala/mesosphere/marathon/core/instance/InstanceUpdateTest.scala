@@ -1,4 +1,5 @@
-package mesosphere.marathon.core.instance
+package mesosphere.marathon
+package core.instance
 
 import mesosphere.UnitTest
 import mesosphere.marathon.core.base.ConstantClock
@@ -61,57 +62,6 @@ class InstanceUpdateTest extends UnitTest {
 
     }
 
-    "updated to running" should {
-      val f = new Fixture
-
-      val operation = InstanceUpdateOperation.MesosUpdate(f.instance, f.mesosTaskStatus, f.clock.now())
-
-      val result = f.instance.update(operation)
-
-      "result in no effect" in { result shouldBe a[InstanceUpdateEffect.Noop] }
-    }
-
-    "on task is updated to running unhealthy" should {
-      val f = new Fixture
-
-      val newMesosStatus = MesosTaskStatusTestHelper.runningUnhealthy(f.taskId)
-      val operation = InstanceUpdateOperation.MesosUpdate(f.instance, newMesosStatus, f.clock.now())
-
-      val result = f.instance.update(operation)
-
-      "result in an update effect" in { result shouldBe a[InstanceUpdateEffect.Update] }
-      "update the instance to unhealthy" in {
-        val effect = result.asInstanceOf[InstanceUpdateEffect.Update]
-        effect.instance.state.healthy should be(Some(false))
-      }
-      "keep the instance in a running condition" in {
-        val effect = result.asInstanceOf[InstanceUpdateEffect.Update]
-        effect.instance.state.condition should be(Condition.Running)
-      }
-    }
-
-    "running an unhealthy task that is updated to healthy again" should {
-      val f = new Fixture
-      val unhealthyStatus = f.task.status.copy(mesosStatus = Some(MesosTaskStatusTestHelper.runningUnhealthy(f.taskId)))
-      val unhealthyTask = f.task.copy(status = unhealthyStatus)
-      val unhealthyState = f.instanceState.copy(healthy = Some(false))
-      val unhealthyInstance = f.instance.copy(state = unhealthyState, tasksMap = Map(f.taskId -> unhealthyTask))
-
-      val newMesosStatus = MesosTaskStatusTestHelper.runningHealthy(f.taskId)
-      val operation = InstanceUpdateOperation.MesosUpdate(unhealthyInstance, newMesosStatus, f.clock.now())
-
-      val result = unhealthyInstance.update(operation)
-
-      "result in an update effect" in { result shouldBe a[InstanceUpdateEffect.Update] }
-      "update the instance to unhealthy" in {
-        val effect = result.asInstanceOf[InstanceUpdateEffect.Update]
-        effect.instance.state.healthy should be(Some(true))
-      }
-      "keep the instance in a running condition" in {
-        val effect = result.asInstanceOf[InstanceUpdateEffect.Update]
-        effect.instance.state.condition should be(Condition.Running)
-      }
-    }
     "updated to running" should {
       val f = new Fixture
 
