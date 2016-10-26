@@ -15,6 +15,10 @@ import org.scalatest.{ FunSuite, GivenWhenThen, Matchers }
 
 class InstanceTest extends FunSuite with Matchers with GivenWhenThen {
 
+  test("legacy instance zero value generator yields a non-null value") {
+    Option(Instance.apply()).nonEmpty should be(true)
+  }
+
   val stateChangeCases = Seq(
     (Created, Created, Seq(Created, Created, Created)),
     (Created, Staging, Seq(Created, Created, Staging)),
